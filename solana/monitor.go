@@ -6,17 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
 type TxType int
@@ -155,7 +155,7 @@ type UITokenAmount struct {
 func NewMonitor(cfg *config.Config) (*Monitor, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotAPI)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 	dbClient, err := db.NewDbClient(&db.Config{
 		Username:     cfg.DBUser,
@@ -164,6 +164,9 @@ func NewMonitor(cfg *config.Config) (*Monitor, error) {
 		Port:         cfg.DBPort,
 		DatabaseName: cfg.DBName,
 	})
+	if err != nil {
+		logrus.Fatalf("create database client error: %v", err)
+	}
 	//wsManager := NewWSManager()
 	return &Monitor{
 		TelegramBot:           bot,
@@ -348,11 +351,11 @@ func (m *WSManager) getAllConnections() map[string]*websocket.Conn {
 func (m *Monitor) NewWsConnection() (*websocket.Conn, error) {
 	conn, _, err := websocket.DefaultDialer.Dial(m.WebsocketEndpoint, nil)
 	if err != nil {
-		log.Fatalf("WebSocket连接失败: %v", err)
+		logrus.Fatalf("webSocket connection error: %v", err)
 	}
 	done := make(chan struct{})
 	go func() {
-		ticker := time.NewTicker(30 * time.Second) // 每 30 秒发送一次 Ping
+		ticker := time.NewTicker(20 * time.Second) // 每 20 秒发送一次 Ping
 		defer ticker.Stop()
 
 		for {
@@ -360,16 +363,45 @@ func (m *Monitor) NewWsConnection() (*websocket.Conn, error) {
 			case <-ticker.C:
 				err := conn.WriteMessage(websocket.PingMessage, nil)
 				if err != nil {
-					log.Println("Write Ping error:", err)
+					logrus.Println("write Ping error:", err)
 					return
 				}
-				log.Println("Sent Ping")
+				logrus.Println("Sent Ping")
 			case <-done:
 				return
 			}
 		}
 	}()
+	m.WSConnPool.SetCloseHandler(func(code int, text string) error {
+		logrus.Printf("WebSocket connection closed: code=%d, reason=%s", code, text)
+		if code == websocket.CloseAbnormalClosure {
+			logrus.Info("Attempting to reconnect...")
+			err := m.reconnect()
+			if err != nil {
+				logrus.Errorf("Reconnect failed: %v", err)
+				return err
+			} else {
+				logrus.Info("Reconnected successfully")
+				return nil
+			}
+		}
+		return nil
+	})
 	return conn, nil
+}
+
+func (m *Monitor) reconnect() error {
+	if m.WSConnPool != nil {
+		m.WSConnPool.Close()
+	}
+
+	conn, _, err := websocket.DefaultDialer.Dial(m.WebsocketEndpoint, nil)
+	if err != nil {
+		return fmt.Errorf("failed to reconnect: %v", err)
+	}
+
+	m.WSConnPool = conn
+	return nil
 }
 
 // MonitorAddress monitor all wallets in database
@@ -390,7 +422,7 @@ func (m *Monitor) MonitorAddress() {
 	}
 
 	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop() // 确保程序退出时停止 ticker
+	defer ticker.Stop()
 	go func() {
 		for {
 			select {
@@ -446,7 +478,7 @@ func (m *Monitor) notify() {
 				msg := tgbotapi.NewMessage(groupId, txText)
 				_, err = m.TelegramBot.Send(msg)
 				if err != nil {
-					log.Fatalf("send message error: %v", err)
+					logrus.Fatalf("send message error: %v", err)
 				}
 			}
 		}
@@ -483,7 +515,7 @@ func getIdentity(wallet *db.WalletInfo) string {
 func (m *Monitor) subscribe(address string) {
 	subscribeMessage := fmt.Sprintf(`{"jsonrpc": "2.0","id": 1,"method": "logsSubscribe","params": [{"mentions": ["%s"]},{"commitment": "finalized"}]}`, address)
 	if err := m.WSConnPool.WriteMessage(websocket.TextMessage, []byte(subscribeMessage)); err != nil {
-		log.Fatalf("subscribe error: %v", err)
+		logrus.Fatalf("subscribe error: %v", err)
 	}
 	logrus.Infof("Successfully subscribe address: %s", address)
 	return
@@ -531,7 +563,7 @@ func (m *Monitor) unsubscribe(address string) {
 		  "params": [%d]
 		}`, m.walletSubscriptionMap[address])
 	if err := m.WSConnPool.WriteMessage(websocket.TextMessage, []byte(unsubscribeMessage)); err != nil {
-		log.Fatalf("unsubscribe error: %v", err)
+		logrus.Fatalf("unsubscribe error: %v", err)
 	}
 	logrus.Infof("Unsubscribe Successfully, address: %s", address)
 }
