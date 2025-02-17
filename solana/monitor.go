@@ -372,24 +372,25 @@ func (m *Monitor) NewWsConnection() (*websocket.Conn, error) {
 			}
 		}
 	}()
-	m.WSConnPool.SetCloseHandler(func(code int, text string) error {
-		logrus.Printf("WebSocket connection closed: code=%d, reason=%s", code, text)
-		if code == websocket.CloseAbnormalClosure {
-			logrus.Info("Attempting to reconnect...")
-			err := m.reconnect()
-			if err != nil {
-				logrus.Errorf("Reconnect failed: %v", err)
-				return err
-			} else {
-				logrus.Info("Reconnected successfully")
-				return nil
-			}
-		}
-		return nil
-	})
+	m.WSConnPool.SetCloseHandler(m.wsClosehandler)
 	return conn, nil
 }
 
+func (m *Monitor) wsClosehandler(code int, text string) error {
+	logrus.Printf("WebSocket connection closed: code=%d, reason=%s", code, text)
+	if code == websocket.CloseAbnormalClosure {
+		logrus.Info("Attempting to reconnect...")
+		err := m.reconnect()
+		if err != nil {
+			logrus.Errorf("Reconnect failed: %v", err)
+			return err
+		} else {
+			logrus.Info("Reconnected successfully")
+			return nil
+		}
+	}
+	return nil
+}
 func (m *Monitor) reconnect() error {
 	if m.WSConnPool != nil {
 		m.WSConnPool.Close()
