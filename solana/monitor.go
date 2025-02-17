@@ -372,7 +372,7 @@ func (m *Monitor) NewWsConnection() (*websocket.Conn, error) {
 			}
 		}
 	}()
-	m.WSConnPool.SetCloseHandler(m.wsClosehandler)
+	conn.SetCloseHandler(m.wsClosehandler)
 	return conn, nil
 }
 
