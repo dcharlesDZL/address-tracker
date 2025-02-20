@@ -102,14 +102,14 @@ type OwnerSig struct {
 	Signature string
 }
 type TxJSONRPCResponse struct {
-	Result  Result `json:"result"`
-	Jsonrpc string `json:"jsonrpc"`
-	ID      int    `json:"id"`
+	Result  *Result `json:"result"`
+	Jsonrpc string  `json:"jsonrpc"`
+	ID      int     `json:"id"`
 }
 
 type Result struct {
 	BlockTime   int64 `json:"blockTime"`
-	Meta        Meta  `json:"meta"`
+	Meta        *Meta `json:"meta"`
 	Slot        int   `json:"slot"`
 	Transaction struct {
 		Message struct {
@@ -165,7 +165,7 @@ func NewMonitor(cfg *config.Config) (*Monitor, error) {
 		DatabaseName: cfg.DBName,
 	})
 	if err != nil {
-		logrus.Fatalf("create database client error: %v", err)
+		logrus.Fatalf("init database client error: %v", err)
 	}
 	//wsManager := NewWSManager()
 	return &Monitor{
@@ -465,8 +465,17 @@ func (m *Monitor) notify() {
 		select {
 		case data := <-m.txCh:
 			fmt.Println("Received data:", data)
+			if data == nil {
+				logrus.Warn("received nil transaction data")
+				continue
+			}
+			if len(data.Result.Transaction.Message.AccountKeys) == 0 {
+				logrus.Warn("transaction has no account keys")
+				continue
+			}
 			owner := data.Result.Transaction.Message.AccountKeys[0]
-			txInfo, err := getTxInfo(owner, data)
+
+			txInfo, err := getSwapTxInfo(owner, data)
 			if err != nil {
 				logrus.Errorf("get tx info error: %v", err)
 				continue
@@ -615,9 +624,13 @@ func (m *Monitor) getTransaction(sig string) (*TxJSONRPCResponse, error) {
 
 }
 
-func getTxInfo(owner string, txData *TxJSONRPCResponse) (*TxInfo, error) {
+func getSwapTxInfo(owner string, txData *TxJSONRPCResponse) (*TxInfo, error) {
 	if txData == nil {
 		return nil, errors.New("tx data is nil, please check")
+	}
+	if txData.Result.Meta == nil || (txData.Result.Meta.PreTokenBalances == nil && txData.Result.Meta.PostTokenBalances == nil) ||
+		(len(txData.Result.Meta.PreTokenBalances) == 0 && len(txData.Result.Meta.PostTokenBalances) == 0) {
+		return nil, errors.New("not a token swap tx, please check")
 	}
 	var token string
 	var ownerPreTokenBalance, ownerPostTokenBalance float64
