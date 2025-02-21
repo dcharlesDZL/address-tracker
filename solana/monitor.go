@@ -56,6 +56,7 @@ type Monitor struct {
 	walletGroupMap        map[string][]int64
 	walletSubscriptionMap map[string]int // wallet address -> subscription id
 	Wallets               []string
+	allGroups             []int64
 	//ConnectionManager     *WSManager // wallet
 	WSConnPool *websocket.Conn
 	sigCh      chan string
@@ -177,6 +178,7 @@ func NewMonitor(cfg *config.Config) (*Monitor, error) {
 		walletGroupMap:        make(map[string][]int64),
 		walletSubscriptionMap: make(map[string]int),
 		Wallets:               nil,
+		allGroups:             []int64{},
 		//ConnectionManager:     wsManager,
 		sigCh:      make(chan string, 10),
 		txCh:       make(chan *TxJSONRPCResponse),
@@ -498,9 +500,14 @@ func (m *Monitor) notify() {
 func (m *Monitor) updateAddressGroup(allWalletSubscriptions []*db.WalletInfo) {
 	m.walletGroupMap = make(map[string][]int64)
 	m.walletInfoMap = make(map[string]*db.WalletInfo)
+	allGroupMap := make(map[int64]bool)
 	for _, wallet := range allWalletSubscriptions {
 		m.walletInfoMap[wallet.Address] = wallet
 		m.walletGroupMap[wallet.Address] = append(m.walletGroupMap[wallet.Address], wallet.GroupId)
+		allGroupMap[wallet.GroupId] = true
+	}
+	for group := range allGroupMap {
+		m.allGroups = append(m.allGroups, group)
 	}
 }
 
@@ -534,8 +541,22 @@ func (m *Monitor) subscribe(address string) {
 func (m *Monitor) receive() {
 
 	for {
-		_, message, err := m.WSConnPool.ReadMessage()
+		msgType, message, err := m.WSConnPool.ReadMessage()
 		if err != nil {
+			logrus.Infof("message type : %d", msgType)
+			if msgType == websocket.CloseAbnormalClosure || msgType == websocket.CloseNormalClosure {
+				if err = m.reconnect(); err != nil {
+					logrus.Errorf("recreate websocket connection error: %v", err)
+					for _, group := range m.allGroups {
+						msg := tgbotapi.NewMessage(group, "websocket connection disconnected, please check.")
+						_, err = m.TelegramBot.Send(msg)
+						if err != nil {
+							logrus.Errorf("send message error: %v", err)
+							continue
+						}
+					}
+				}
+			}
 			logrus.Printf("read message error: %v", err)
 			continue
 		}
