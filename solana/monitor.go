@@ -109,21 +109,25 @@ type TxJSONRPCResponse struct {
 }
 
 type Result struct {
-	BlockTime   int64 `json:"blockTime"`
-	Meta        *Meta `json:"meta"`
-	Slot        int   `json:"slot"`
-	Transaction struct {
-		Message struct {
-			AccountKeys []string `json:"accountKeys"`
-			Header      struct {
-				NumReadonlySignedAccounts   int `json:"numReadonlySignedAccounts"`
-				NumReadonlyUnsignedAccounts int `json:"numReadonlyUnsignedAccounts"`
-				NumRequiredSignatures       int `json:"numRequiredSignatures"`
-			} `json:"header"`
-			RecentBlockhash string `json:"recentBlockhash"`
-		} `json:"message"`
-		Signatures []string `json:"signatures"`
-	} `json:"transaction"`
+	BlockTime int64        `json:"blockTime"`
+	Meta      *Meta        `json:"meta"`
+	Slot      int          `json:"slot"`
+	Tx        *Transaction `json:"transaction"`
+}
+
+type Transaction struct {
+	Msg        *Message `json:"message"`
+	Signatures []string `json:"signatures"`
+}
+
+type Message struct {
+	AccountKeys []string `json:"accountKeys"`
+	Header      struct {
+		NumReadonlySignedAccounts   int `json:"numReadonlySignedAccounts"`
+		NumReadonlyUnsignedAccounts int `json:"numReadonlyUnsignedAccounts"`
+		NumRequiredSignatures       int `json:"numRequiredSignatures"`
+	} `json:"header"`
+	RecentBlockhash string `json:"recentBlockhash"`
 }
 
 type Meta struct {
@@ -471,11 +475,11 @@ func (m *Monitor) notify() {
 				logrus.Warn("received nil transaction data")
 				continue
 			}
-			if len(data.Result.Transaction.Message.AccountKeys) == 0 {
+			if len(data.Result.Tx.Msg.AccountKeys) == 0 {
 				logrus.Warn("transaction has no account keys")
 				continue
 			}
-			owner := data.Result.Transaction.Message.AccountKeys[0]
+			owner := data.Result.Tx.Msg.AccountKeys[0]
 
 			txInfo, err := getSwapTxInfo(owner, data)
 			if err != nil {
@@ -578,8 +582,9 @@ func (m *Monitor) receive() {
 			continue
 		}
 		m.txCh <- tx
-		if len(tx.Result.Transaction.Message.AccountKeys) > 0 {
-			owner := tx.Result.Transaction.Message.AccountKeys[0]
+		// todo: change another way to save subscription id
+		if tx != nil && len(tx.Result.Tx.Msg.AccountKeys) > 0 {
+			owner := tx.Result.Tx.Msg.AccountKeys[0]
 			m.walletSubscriptionMap[owner] = logSubscribeResult.Params.Subscription
 		}
 	}
