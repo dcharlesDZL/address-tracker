@@ -544,7 +544,7 @@ func (m *Monitor) receive() {
 		msgType, message, err := m.WSConnPool.ReadMessage()
 		if err != nil {
 			logrus.Infof("message type : %d", msgType)
-			if msgType == websocket.CloseAbnormalClosure || msgType == websocket.CloseNormalClosure {
+			if msgType != websocket.TextMessage && msgType != websocket.BinaryMessage && msgType != websocket.PingMessage && msgType != websocket.PongMessage {
 				if err = m.reconnect(); err != nil {
 					logrus.Errorf("recreate websocket connection error: %v", err)
 					for _, group := range m.allGroups {
