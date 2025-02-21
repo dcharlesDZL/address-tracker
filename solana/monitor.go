@@ -599,26 +599,23 @@ func (m *Monitor) getTransaction(sig string) (*TxJSONRPCResponse, error) {
 	req, err := http.NewRequest(method, m.HttpEndpoint, payload)
 
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	txData := &TxJSONRPCResponse{}
 	err = json.Unmarshal(body, &txData)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 	return txData, nil
 
