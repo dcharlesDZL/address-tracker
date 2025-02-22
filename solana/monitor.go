@@ -102,6 +102,13 @@ type OwnerSig struct {
 	Owner     string
 	Signature string
 }
+
+type SubscriptionResult struct {
+	Jsonrpc string `json:"jsonrpc"`
+	Result  int    `json:"result"`
+	Id      int    `json:"id"`
+}
+
 type TxJSONRPCResponse struct {
 	Result  *Result `json:"result"`
 	Jsonrpc string  `json:"jsonrpc"`
@@ -449,7 +456,11 @@ func (m *Monitor) MonitorAddress() {
 				}
 				if len(added) > 0 {
 					for _, wallet := range added {
-						m.subscribe(wallet)
+						subId, err := m.subscribe(wallet)
+						if err != nil {
+							logrus.Error("subscribe wallet error: ", err)
+						}
+						m.walletSubscriptionMap[wallet] = subId
 					}
 				}
 				if len(removed) > 0 {
@@ -533,13 +544,27 @@ func getIdentity(wallet *db.WalletInfo) string {
 	return wallet.Address + ":" + groupIdStr
 }
 
-func (m *Monitor) subscribe(address string) {
+func (m *Monitor) subscribe(address string) (int, error) {
 	subscribeMessage := fmt.Sprintf(`{"jsonrpc": "2.0","id": 1,"method": "logsSubscribe","params": [{"mentions": ["%s"]},{"commitment": "finalized"}]}`, address)
 	if err := m.WSConnPool.WriteMessage(websocket.TextMessage, []byte(subscribeMessage)); err != nil {
 		logrus.Fatalf("subscribe error: %v", err)
 	}
 	logrus.Infof("Successfully subscribe address: %s", address)
-	return
+	err := m.WSConnPool.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if err != nil {
+		logrus.Error("set read deadline error: ", err)
+		return 0, err
+	}
+	_, message, err := m.WSConnPool.ReadMessage()
+	if err != nil {
+		return 0, err
+	}
+	subResult := &SubscriptionResult{}
+	err = json.Unmarshal(message, &subResult)
+	if err != nil {
+		return 0, err
+	}
+	return subResult.Result, nil
 }
 
 func (m *Monitor) receive() {
@@ -582,11 +607,12 @@ func (m *Monitor) receive() {
 			continue
 		}
 		m.txCh <- tx
-		// todo: change another way to save subscription id
-		if tx != nil && len(tx.Result.Tx.Msg.AccountKeys) > 0 {
-			owner := tx.Result.Tx.Msg.AccountKeys[0]
-			m.walletSubscriptionMap[owner] = logSubscribeResult.Params.Subscription
-		}
+		logrus.Info(tx)
+		// // todo: change another way to save subscription id
+		// if tx != nil && len(tx.Result.Tx.Msg.AccountKeys) > 0 {
+		// 	owner := tx.Result.Tx.Msg.AccountKeys[0]
+		// 	m.walletSubscriptionMap[owner] = logSubscribeResult.Params.Subscription
+		// }
 	}
 }
 
