@@ -556,12 +556,15 @@ func (m *Monitor) subscribe(address string) (int, error) {
 		return 0, err
 	}
 	_, message, err := m.WSConnPool.ReadMessage()
+	logrus.Info("read sub message: ", string(message))
 	if err != nil {
+		logrus.Error("read wallet subscription error: ", err)
 		return 0, err
 	}
 	subResult := &SubscriptionResult{}
 	err = json.Unmarshal(message, &subResult)
 	if err != nil {
+		logrus.Error("unmarshal subscription result error: ", err)
 		return 0, err
 	}
 	return subResult.Result, nil
