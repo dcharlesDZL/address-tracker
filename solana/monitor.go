@@ -456,18 +456,18 @@ func (m *Monitor) MonitorAddress() {
 				}
 				if len(added) > 0 {
 					for _, wallet := range added {
-						subId, err := m.subscribe(wallet)
-						if err != nil {
-							logrus.Error("subscribe wallet error: ", err)
-						}
-						m.walletSubscriptionMap[wallet] = subId
+						m.subscribe(wallet)
+						// if err != nil {
+						// 	logrus.Error("subscribe wallet error: ", err)
+						// }
+						// m.walletSubscriptionMap[wallet] = subId
 					}
 				}
-				if len(removed) > 0 {
-					for _, wallet := range removed {
-						m.unsubscribe(wallet)
-					}
-				}
+				// if len(removed) > 0 {
+				// 	for _, wallet := range removed {
+				// 		m.unsubscribe(wallet)
+				// 	}
+				// }
 				m.Wallets = allWallets
 			}
 		}
@@ -544,30 +544,30 @@ func getIdentity(wallet *db.WalletInfo) string {
 	return wallet.Address + ":" + groupIdStr
 }
 
-func (m *Monitor) subscribe(address string) (int, error) {
+func (m *Monitor) subscribe(address string) {
 	subscribeMessage := fmt.Sprintf(`{"jsonrpc": "2.0","id": 1,"method": "logsSubscribe","params": [{"mentions": ["%s"]},{"commitment": "finalized"}]}`, address)
 	if err := m.WSConnPool.WriteMessage(websocket.TextMessage, []byte(subscribeMessage)); err != nil {
 		logrus.Fatalf("subscribe error: %v", err)
 	}
 	logrus.Infof("Successfully subscribe address: %s", address)
-	err := m.WSConnPool.SetReadDeadline(time.Now().Add(5 * time.Second))
-	if err != nil {
-		logrus.Error("set read deadline error: ", err)
-		return 0, err
-	}
-	_, message, err := m.WSConnPool.ReadMessage()
-	logrus.Info("read sub message: ", string(message))
-	if err != nil {
-		logrus.Error("read wallet subscription error: ", err)
-		return 0, err
-	}
-	subResult := &SubscriptionResult{}
-	err = json.Unmarshal(message, &subResult)
-	if err != nil {
-		logrus.Error("unmarshal subscription result error: ", err)
-		return 0, err
-	}
-	return subResult.Result, nil
+	// err := m.WSConnPool.SetReadDeadline(time.Now().Add(5 * time.Second))
+	// if err != nil {
+	// 	logrus.Error("set read deadline error: ", err)
+	// 	return 0, err
+	// }
+	// _, message, err := m.WSConnPool.ReadMessage()
+	// logrus.Info("read sub message: ", string(message))
+	// if err != nil {
+	// 	logrus.Error("read wallet subscription error: ", err)
+	// 	return 0, err
+	// }
+	// subResult := &SubscriptionResult{}
+	// err = json.Unmarshal(message, &subResult)
+	// if err != nil {
+	// 	logrus.Error("unmarshal subscription result error: ", err)
+	// 	return 0, err
+	// }
+	// return subResult.Result, nil
 }
 
 func (m *Monitor) receive() {
