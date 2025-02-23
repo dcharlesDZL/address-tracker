@@ -482,7 +482,7 @@ func (m *Monitor) notify() {
 		select {
 		case data := <-m.txCh:
 			fmt.Println("Received data:", data)
-			if data == nil {
+			if data == nil || data.Result == nil {
 				logrus.Warn("received nil transaction data")
 				continue
 			}
