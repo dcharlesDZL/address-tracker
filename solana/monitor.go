@@ -408,7 +408,7 @@ func (m *Monitor) reconnect() error {
 	if m.WSConnPool != nil {
 		m.WSConnPool.Close()
 	}
-
+	logrus.Info("Trying to reconnect...")
 	conn, _, err := websocket.DefaultDialer.Dial(m.WebsocketEndpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to reconnect: %v", err)
@@ -590,6 +590,17 @@ func (m *Monitor) receive() {
 				}
 			}
 			logrus.Printf("read message error: %v", err)
+			if err = m.reconnect(); err != nil {
+				logrus.Errorf("recreate websocket connection error: %v", err)
+				for _, group := range m.allGroups {
+					msg := tgbotapi.NewMessage(group, "websocket connection disconnected, please check.")
+					_, err = m.TelegramBot.Send(msg)
+					if err != nil {
+						logrus.Errorf("send message error: %v", err)
+						continue
+					}
+				}
+			}
 			continue
 		}
 		logrus.Info(string(message))
