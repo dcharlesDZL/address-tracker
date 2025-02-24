@@ -528,7 +528,7 @@ func (m *Monitor) notify() {
 			txText := formatUserActivityText(txInfo, m.walletInfoMap)
 			for _, groupId := range m.walletGroupMap[owner] {
 				msg := tgbotapi.NewMessage(groupId, txText)
-				msg.ParseMode = "Markdown"
+				msg.ParseMode = "MarkdownV2"
 				_, err = m.TelegramBot.Send(msg)
 				if err != nil {
 					logrus.Errorf("send message error: %v", err)
@@ -784,6 +784,6 @@ func formatUserActivityText(txInfo *TxInfo, walletMap map[string]*db.WalletInfo)
 		action = "全卖"
 	}
 
-	msg := fmt.Sprintf("监控到: %s   钱包： \\`%s\\`   代币: \\`%s\\`   买卖行为： %s   数量： \\`%.4f\\`", walletMap[txInfo.Owner].Nickname, txInfo.Owner, txInfo.Token, action, txInfo.Amount)
+	msg := fmt.Sprintf("监控到: %s  \n钱包： \\`%s\\` \n代币: \\`%s\\` \n买卖行为： %s \n数量： \\`%.4f\\`", walletMap[txInfo.Owner].Nickname, txInfo.Owner, txInfo.Token, action, txInfo.Amount)
 	return msg
 }
