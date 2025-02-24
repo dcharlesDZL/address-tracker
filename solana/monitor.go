@@ -204,11 +204,17 @@ func (m *Monitor) HandleCommand(message *tgbotapi.Message) error {
 	case "addWallet":
 		groupId := message.Chat.ID
 		args := message.CommandArguments()
-		wallet, nickname, _ := splitAddressNickname(args)
+		wallet, nickname, err := splitAddressNickname(args)
+		if err != nil {
+			logrus.Error("get args error")
+			replyMessage := tgbotapi.NewMessage(message.Chat.ID, "⚠️Please input correct args!")
+			m.TelegramBot.Send(replyMessage)
+			return err
+		}
 		logrus.Info(args)
 		// check wallet address type, only support solana and ethereum wallet
 		walletChainType := getAddressType(wallet)
-		err := m.DBClient.AddWallet(wallet, walletChainType, nickname, groupId)
+		err = m.DBClient.AddWallet(wallet, walletChainType, nickname, groupId)
 		if err != nil {
 			logrus.Error(err)
 			return err
@@ -218,6 +224,12 @@ func (m *Monitor) HandleCommand(message *tgbotapi.Message) error {
 	case "delWallet":
 		groupId := message.Chat.ID
 		wallet := message.CommandArguments()
+		if wallet == "" {
+			logrus.Error("get args error")
+			replyMessage := tgbotapi.NewMessage(message.Chat.ID, "⚠️Please input correct args!")
+			m.TelegramBot.Send(replyMessage)
+			return errors.New("get delete wallet args error")
+		}
 		err := m.DBClient.DelWallet(wallet, groupId)
 		if err != nil {
 			logrus.Error(err)
@@ -771,6 +783,6 @@ func formatUserActivityText(txInfo *TxInfo, walletMap map[string]*db.WalletInfo)
 		action = "全卖"
 	}
 
-	msg := fmt.Sprintf("监控到： %s \n钱包： `%s` \n代币： `%s` \n买卖行为： %s \n数量： %.4f", walletMap[txInfo.Owner].Nickname, txInfo.Owner, txInfo.Token, action, txInfo.Amount)
+	msg := fmt.Sprintf("监控到： %s \n钱包： \\`%s\\` \n代币： \\`%s\\` \n买卖行为： %s \n数量： %.4f", walletMap[txInfo.Owner].Nickname, txInfo.Owner, txInfo.Token, action, txInfo.Amount)
 	return msg
 }
