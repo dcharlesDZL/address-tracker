@@ -390,30 +390,43 @@ func (m *Monitor) NewWsConnection() (*websocket.Conn, error) {
 }
 
 func (m *Monitor) wsClosehandler(code int, text string) error {
-	logrus.Printf("WebSocket connection closed: code=%d, reason=%s", code, text)
-	if code == websocket.CloseAbnormalClosure {
-		logrus.Info("Attempting to reconnect...")
+	logrus.Info("WebSocket connection closed: code=%d, reason=%s", code, text)
+	if code == websocket.CloseNormalClosure {
+		logrus.Info("Connection closed.")
+	}
+	if code == websocket.CloseGoingAway || code == websocket.CloseProtocolError || code == websocket.CloseUnsupportedData ||
+		code == websocket.CloseNoStatusReceived || code == websocket.CloseAbnormalClosure || code == websocket.CloseInvalidFramePayloadData ||
+		code == websocket.ClosePolicyViolation || code == websocket.CloseMessageTooBig || code == websocket.CloseMandatoryExtension ||
+		code == websocket.CloseInternalServerErr || code == websocket.CloseServiceRestart || code == websocket.CloseTLSHandshake {
+		logrus.Info("Trying to reconnect...")
 		err := m.reconnect()
 		if err != nil {
-			logrus.Errorf("Reconnect failed: %v", err)
+			logrus.Error("reconnect error: ", err)
 			return err
-		} else {
-			logrus.Info("Reconnected successfully")
-			return nil
+		}
+	}
+	if code == websocket.CloseTryAgainLater {
+		logrus.Info("Trying to reconnect in 10 seconds...")
+		time.Sleep(10 * time.Second)
+		logrus.Info("Trying to reconnect...")
+		err := m.reconnect()
+		if err != nil {
+			logrus.Error("reconnect error: ", err)
+			return err
 		}
 	}
 	return nil
 }
 func (m *Monitor) reconnect() error {
-	if m.WSConnPool != nil {
-		m.WSConnPool.Close()
-	}
+	//if m.WSConnPool != nil {
+	//	m.WSConnPool.Close()
+	//}
 	logrus.Info("Trying to reconnect...")
 	conn, _, err := websocket.DefaultDialer.Dial(m.WebsocketEndpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to reconnect: %v", err)
 	}
-
+	conn.SetCloseHandler(m.wsClosehandler)
 	m.WSConnPool = conn
 	return nil
 }
@@ -575,7 +588,7 @@ func (m *Monitor) receive() {
 	for {
 		msgType, message, err := m.WSConnPool.ReadMessage()
 		if err != nil {
-			logrus.Infof("message type : %d", msgType)
+			logrus.Infof("message type: %d", msgType)
 			if msgType != websocket.TextMessage && msgType != websocket.BinaryMessage && msgType != websocket.PingMessage && msgType != websocket.PongMessage {
 				if err = m.reconnect(); err != nil {
 					logrus.Errorf("recreate websocket connection error: %v", err)
