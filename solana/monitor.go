@@ -528,7 +528,7 @@ func (m *Monitor) notify() {
 			txText := formatUserActivityText(txInfo, m.walletInfoMap)
 			for _, groupId := range m.walletGroupMap[owner] {
 				msg := tgbotapi.NewMessage(groupId, txText)
-				msg.ParseMode = "markdown"
+				msg.ParseMode = "MarkdownV2"
 				_, err = m.TelegramBot.Send(msg)
 				if err != nil {
 					logrus.Fatalf("send message error: %v", err)
