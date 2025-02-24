@@ -785,6 +785,6 @@ func formatUserActivityText(txInfo *TxInfo, walletMap map[string]*db.WalletInfo)
 		action = "全卖"
 	}
 
-	msg := fmt.Sprintf("监控到: %s  \n钱包： \\`%s\\` \n代币: \\`%s\\` \n买卖行为： %s \n数量： \\`%.4f\\`", walletMap[txInfo.Owner].Nickname, txInfo.Owner, txInfo.Token, action, txInfo.Amount)
+	msg := "监控到: " + walletMap[txInfo.Owner].Nickname + "\n" + "钱包：" + "`" + txInfo.Owner + "`" + "\n" + "代币: " + "`" + txInfo.Token + "`" + "买卖行为：" + action + "\n" + "数量：" + strconv.FormatFloat(txInfo.Amount, 'f', 10, 64)
 	return msg
 }
