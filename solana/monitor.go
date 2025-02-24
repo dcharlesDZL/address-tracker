@@ -526,8 +526,9 @@ func (m *Monitor) notify() {
 				continue
 			}
 			txText := formatUserActivityText(txInfo, m.walletInfoMap)
+			newTxText := strings.Replace(txText, ".", "\\.", -1)
 			for _, groupId := range m.walletGroupMap[owner] {
-				msg := tgbotapi.NewMessage(groupId, txText)
+				msg := tgbotapi.NewMessage(groupId, newTxText)
 				msg.ParseMode = "MarkdownV2"
 				_, err = m.TelegramBot.Send(msg)
 				if err != nil {
