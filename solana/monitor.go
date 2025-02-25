@@ -405,6 +405,7 @@ func (m *Monitor) wsClosehandler(code int, text string) error {
 	logrus.Info("WebSocket connection closed: code=%d, reason=%s", code, text)
 	if code == websocket.CloseNormalClosure {
 		logrus.Info("Connection closed.")
+		return nil
 	}
 	if code == websocket.CloseGoingAway || code == websocket.CloseProtocolError || code == websocket.CloseUnsupportedData ||
 		code == websocket.CloseNoStatusReceived || code == websocket.CloseAbnormalClosure || code == websocket.CloseInvalidFramePayloadData ||
@@ -430,9 +431,9 @@ func (m *Monitor) wsClosehandler(code int, text string) error {
 	return nil
 }
 func (m *Monitor) reconnect() error {
-	//if m.WSConnPool != nil {
-	//	m.WSConnPool.Close()
-	//}
+	if m.WSConnPool != nil {
+		m.WSConnPool.Close()
+	}
 	logrus.Info("Trying to reconnect...")
 	conn, _, err := websocket.DefaultDialer.Dial(m.WebsocketEndpoint, nil)
 	if err != nil {
