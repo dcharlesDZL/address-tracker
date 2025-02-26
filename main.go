@@ -3,11 +3,15 @@ package main
 import (
 	"address-tracker/config"
 	"address-tracker/solana"
+	"embed"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/pressly/goose/v3"
 	"github.com/spf13/pflag"
 	"log"
 )
+
+//go:embed db/migrations/*.sql
+var migrations embed.FS
 
 func main() {
 	var envFile = pflag.StringP("env", "e", "config/.env", "env file path.")
@@ -18,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 	//check db migration
-	goose.SetBaseFS(nil)
+	goose.SetBaseFS(migrations)
 	if err := goose.Up(monitor.DBClient.Conn.DB, "db/migrations"); err != nil {
 		log.Fatalf("Failed to apply migrations: %v", err)
 	}
