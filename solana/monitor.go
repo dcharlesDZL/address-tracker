@@ -601,35 +601,37 @@ func (m *Monitor) subscribe(address string) {
 func (m *Monitor) receive() {
 
 	for {
-		msgType, message, err := m.WSConnPool.ReadMessage()
+		_, message, err := m.WSConnPool.ReadMessage()
 		if err != nil {
-			logrus.Infof("message type: %d", msgType)
-			if msgType != websocket.TextMessage && msgType != websocket.BinaryMessage && msgType != websocket.PingMessage && msgType != websocket.PongMessage {
-				if err = m.reconnect(); err != nil {
-					logrus.Errorf("recreate websocket connection error: %v", err)
-					for _, group := range m.allGroups {
-						msg := tgbotapi.NewMessage(group, "websocket connection disconnected, please check.")
-						_, err = m.TelegramBot.Send(msg)
-						if err != nil {
-							logrus.Errorf("send message error: %v", err)
-							continue
-						}
-					}
-				}
-			}
-			logrus.Printf("read message error: %v", err)
-			if err = m.reconnect(); err != nil {
-				logrus.Errorf("recreate websocket connection error: %v", err)
-				for _, group := range m.allGroups {
-					msg := tgbotapi.NewMessage(group, "websocket connection disconnected, please check.")
-					_, err = m.TelegramBot.Send(msg)
-					if err != nil {
-						logrus.Errorf("send message error: %v", err)
-						continue
-					}
-				}
-			}
-			continue
+			//logrus.Infof("message type: %d", msgType)
+			//if msgType != websocket.TextMessage && msgType != websocket.BinaryMessage && msgType != websocket.PingMessage && msgType != websocket.PongMessage {
+			//	if err = m.reconnect(); err != nil {
+			//		logrus.Errorf("recreate websocket connection error: %v", err)
+			//		for _, group := range m.allGroups {
+			//			msg := tgbotapi.NewMessage(group, "websocket connection disconnected, please check.")
+			//			_, err = m.TelegramBot.Send(msg)
+			//			if err != nil {
+			//				logrus.Errorf("send message error: %v", err)
+			//				continue
+			//			}
+			//		}
+			//	}
+			//}
+			//logrus.Printf("read message error: %v", err)
+			//if err = m.reconnect(); err != nil {
+			//	logrus.Errorf("recreate websocket connection error: %v", err)
+			//	for _, group := range m.allGroups {
+			//		msg := tgbotapi.NewMessage(group, "websocket connection disconnected, please check.")
+			//		_, err = m.TelegramBot.Send(msg)
+			//		if err != nil {
+			//			logrus.Errorf("send message error: %v", err)
+			//			continue
+			//		}
+			//	}
+			//}
+			//continue
+			// todo
+			panic("read ws message error")
 		}
 		logrus.Info(string(message))
 		var logSubscribeResult LogSubscribeResponse
