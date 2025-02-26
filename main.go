@@ -5,11 +5,14 @@ import (
 	"address-tracker/solana"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/pressly/goose/v3"
+	"github.com/spf13/pflag"
 	"log"
 )
 
 func main() {
-	cfg, _ := config.LoadConfigFile("config/.env")
+	var envFile = pflag.StringP("env", "e", "config/.env", "env file path.")
+	pflag.Parse()
+	cfg, _ := config.LoadConfigFile(*envFile)
 	monitor, err := solana.NewMonitor(cfg)
 	if err != nil {
 		log.Fatal(err)

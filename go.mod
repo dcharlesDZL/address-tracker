@@ -11,6 +11,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pressly/goose/v3 v3.24.1
 	github.com/sirupsen/logrus v1.9.3
+	github.com/spf13/pflag v1.0.6
 )
 
 require (
